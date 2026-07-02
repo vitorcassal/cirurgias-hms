@@ -393,11 +393,13 @@ async function enviarRegistro(forcar) {
     if (resp && resp.ok) {
       mostrarSucesso(registroPendente);
     } else {
-      toast((resp && resp.erro) || "Não foi possível salvar. Tente novamente.");
+      mostrarAvisoErro((resp && resp.erro) || "Não foi possível salvar. Tente novamente.");
+      toast("Não foi possível salvar. Veja o aviso acima.");
     }
   } catch (err) {
     console.error(err);
-    toast("Falha de conexão ao salvar. Verifique a internet.");
+    mostrarAvisoErro("Falha ao salvar: " + (err.message || "verifique a internet e tente de novo."));
+    toast("Não foi possível salvar. Veja o aviso acima.");
   } finally {
     btn.disabled = false;
     btn.textContent = "Salvar registro";
@@ -445,7 +447,22 @@ async function chamarEndpoint(payload) {
     redirect: "follow",
   });
   if (!resp.ok) throw new Error("HTTP " + resp.status);
-  return resp.json();
+
+  const texto = await resp.text();
+  try {
+    return JSON.parse(texto);
+  } catch (err) {
+    // O servidor respondeu algo que não é JSON. Isso quase sempre significa
+    // que o Apps Script não foi reimplantado depois da última atualização
+    // do Codigo.gs, ou que a URL configurada (⚙️) não é a mais recente.
+    throw new Error(
+      "o servidor respondeu algo inesperado (não era o resultado esperado). " +
+      "Normalmente isso acontece quando o Apps Script foi editado mas não foi " +
+      "reimplantado (Implantar → Gerenciar implantações → editar (lápis) → " +
+      "Nova versão → Implantar), ou quando a URL configurada aqui no app não " +
+      "é a URL /exec mais recente."
+    );
+  }
 }
 
 /* =========================================================================
@@ -477,6 +494,14 @@ el("btnConfigSalvar").addEventListener("click", () => {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").catch((e) => console.warn("SW:", e));
+  });
+  // Assim que uma versão nova do app assumir o controle da página, recarrega
+  // automaticamente — evita o app "ficar preso" numa versão antiga no celular.
+  let jaRecarregou = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (jaRecarregou) return;
+    jaRecarregou = true;
+    window.location.reload();
   });
 }
 
