@@ -1,15 +1,20 @@
 /* =========================================================================
    Cirurgias HSM — lógica do app (PWA)
+   Suporta DOIS hospitais (HMS e HMC), cada um com sua aba na planilha e seu
+   próprio conjunto de campos. O hospital é escolhido na Tela 1, antes da
+   foto, porque a extração por IA já depende de qual hospital está ativo.
+
    Conversa com um único endpoint (Apps Script Web App) que:
      • action "extract" → lê a etiqueta com IA (Gemini) e devolve JSON
-     • action "save"    → confere duplicata e grava a linha na planilha
+     • action "save"    → confere duplicata e grava a linha na aba correta
    ========================================================================= */
 
 "use strict";
 
 /* ---------- Estado e referências ---------- */
-const CHAVE_ENDPOINT = "cirurgias_hsm_endpoint";
-let dadosExtraidos = { prontuario: "" };   // guarda o prontuário lido para conferência
+const CHAVE_ENDPOINT  = "cirurgias_hsm_endpoint";
+const CHAVE_HOSPITAL  = "cirurgias_hospital_atual";
+let dadosExtraidos = { prontuario: "" };   // guarda o prontuário lido (só HMS) para conferência
 let registroPendente = null;               // dados aguardando confirmação de duplicata
 
 const el = (id) => document.getElementById(id);
@@ -44,6 +49,35 @@ function getEndpoint() {
 function setEndpoint(url) {
   localStorage.setItem(CHAVE_ENDPOINT, url.trim());
 }
+
+/* =========================================================================
+   Hospital ativo (HMS ou HMC)
+   Define: (1) qual bloco de campos aparece na Tela 2, (2) o prompt de
+   extração usado pela IA, (3) em qual aba da planilha o registro é gravado.
+   ========================================================================= */
+function getHospital() {
+  return localStorage.getItem(CHAVE_HOSPITAL) || "HMS";
+}
+function setHospital(h) {
+  localStorage.setItem(CHAVE_HOSPITAL, h);
+  atualizarSeletorHospital();
+}
+
+function atualizarSeletorHospital() {
+  const h = getHospital();
+  document.querySelectorAll(".hospital-opcao").forEach((btn) => {
+    btn.classList.toggle("ativo", btn.dataset.hospital === h);
+  });
+  el("campos-hms").classList.toggle("oculto", h !== "HMS");
+  el("campos-hmc").classList.toggle("oculto", h !== "HMC");
+  el("hospitalBadge").textContent = h;
+}
+
+document.querySelectorAll(".hospital-opcao").forEach((btn) => {
+  btn.addEventListener("click", () => setHospital(btn.dataset.hospital));
+});
+
+atualizarSeletorHospital(); // aplica o estado salvo (ou HMS por padrão) já na abertura
 
 /* ---------- Datas: máscara e validação ---------- */
 function aplicarMascaraData(input) {
@@ -82,6 +116,7 @@ el("inputFoto").addEventListener("change", async (e) => {
     const base64 = await arquivoParaBase64(arquivo);   // só o conteúdo, sem prefixo
     const resp = await chamarEndpoint({
       action: "extract",
+      hospital: getHospital(),
       mimeType: arquivo.type || "image/jpeg",
       imageBase64: base64,
     });
@@ -130,8 +165,17 @@ function arquivoParaBase64(arquivo) {
 
 /* =========================================================================
    TELA 2 — Conferência / formulário
+   Roteia para o preenchimento certo conforme o hospital ativo.
    ========================================================================= */
 function preencherFormulario(d) {
+  atualizarSeletorHospital(); // garante que o bloco de campos certo está visível
+  if (getHospital() === "HMC") preencherFormularioHMC(d);
+  else preencherFormularioHMS(d);
+
+  document.querySelectorAll(".invalido").forEach((i) => i.classList.remove("invalido"));
+}
+
+function preencherFormularioHMS(d) {
   dadosExtraidos = { prontuario: d.prontuario || "" };
 
   el("nome").value          = d.nome_completo || "";
@@ -164,22 +208,73 @@ function preencherFormulario(d) {
   } else {
     aviso.classList.add("oculto");
   }
-
-  // limpa marcas de erro
-  document.querySelectorAll(".invalido").forEach((i) => i.classList.remove("invalido"));
 }
 
-// Máscara nas datas
-["nascimento", "dataProcedimento"].forEach((id) => {
+function preencherFormularioHMC(d) {
+  el("hmcNome").value        = d.nome_completo || "";
+  el("hmcData").value        = d.data || "";
+  el("hmcAtendimento").value = d.numero_atendimento || "";
+  el("hmcConvenio").value    = d.convenio || "";
+
+  el("hmcProcedimento").value = "";
+  el("hmcProcedimentoOutro").value = "";
+  el("campo-hmc-procedimento-outro").classList.add("oculto");
+
+  el("hmcChefe").value = "";
+  el("hmcChefeOutro").value = "";
+  el("campo-hmc-chefe-outro").classList.add("oculto");
+
+  el("hmcApartamento").value = ""; // nunca vem pré-selecionado — o cirurgião escolhe
+
+  // Avisa quais campos não foram lidos
+  const faltando = [];
+  if (!d.nome_completo)     faltando.push("nome");
+  if (!d.data)               faltando.push("data");
+  if (!d.numero_atendimento) faltando.push("nº de atendimento");
+  const aviso = el("aviso-campos");
+  if (faltando.length && (d.nome_completo || d.data || d.numero_atendimento || d.convenio)) {
+    aviso.textContent = "Atenção: não consegui ler " + faltando.join(", ") +
+      ". Confira e preencha manualmente.";
+    aviso.classList.remove("oculto", "aviso-erro");
+    aviso.classList.add("aviso-atencao");
+  } else {
+    aviso.classList.add("oculto");
+  }
+}
+
+// Máscara nas datas (campos dos dois hospitais)
+["nascimento", "dataProcedimento", "hmcData"].forEach((id) => {
   el(id).addEventListener("input", (e) => aplicarMascaraData(e.target));
 });
 
-// Dropdown "Outra…"
+// Dropdown "Outra…" — procedimento HMS
 el("procedimento").addEventListener("change", (e) => {
   const outro = el("campo-procedimento-outro");
   if (e.target.value === "Outra") {
     outro.classList.remove("oculto");
     el("procedimentoOutro").focus();
+  } else {
+    outro.classList.add("oculto");
+  }
+});
+
+// Dropdown "Outros…" — procedimento HMC
+el("hmcProcedimento").addEventListener("change", (e) => {
+  const outro = el("campo-hmc-procedimento-outro");
+  if (e.target.value === "Outros") {
+    outro.classList.remove("oculto");
+    el("hmcProcedimentoOutro").focus();
+  } else {
+    outro.classList.add("oculto");
+  }
+});
+
+// Dropdown "Outro…" — chefe HMC
+el("hmcChefe").addEventListener("change", (e) => {
+  const outro = el("campo-hmc-chefe-outro");
+  if (e.target.value === "Outro") {
+    outro.classList.remove("oculto");
+    el("hmcChefeOutro").focus();
   } else {
     outro.classList.add("oculto");
   }
@@ -192,6 +287,15 @@ el("formCirurgia").addEventListener("submit", (e) => {
   e.preventDefault();
   document.querySelectorAll(".invalido").forEach((i) => i.classList.remove("invalido"));
 
+  registroPendente = (getHospital() === "HMC") ? coletarHMC() : coletarHMS();
+  if (!registroPendente) return; // erros já reportados por toast
+
+  enviarRegistro(false);
+});
+
+function marcarInvalido(id) { el(id).classList.add("invalido"); }
+
+function coletarHMS() {
   const nome = el("nome").value.trim();
   let procedimento = el("procedimento").value;
   const procedimentoOutro = el("procedimentoOutro").value.trim();
@@ -212,21 +316,64 @@ el("formCirurgia").addEventListener("submit", (e) => {
 
   if (erros.length) {
     toast("Verifique: " + [...new Set(erros)].join(", ") + ".");
-    return;
+    return null;
   }
 
-  registroPendente = {
+  return {
+    hospital: "HMS",
     nome_completo: nome,
     data_nascimento: nascimento,
     procedimento_realizado: procedimento,
     data_procedimento: dataProc,
     intercorrencias: el("intercorrencias").value.trim(),
   };
+}
 
-  enviarRegistro(false);
-});
+function coletarHMC() {
+  const nome = el("hmcNome").value.trim();
+  const data = el("hmcData").value.trim();
+  const atendimento = el("hmcAtendimento").value.trim();
+  let procedimento = el("hmcProcedimento").value;
+  const procedimentoOutro = el("hmcProcedimentoOutro").value.trim();
+  let chefe = el("hmcChefe").value;
+  const chefeOutro = el("hmcChefeOutro").value.trim();
+  const apartamento = el("hmcApartamento").value;
 
-function marcarInvalido(id) { el(id).classList.add("invalido"); }
+  const erros = [];
+  if (!nome) { erros.push("nome"); marcarInvalido("hmcNome"); }
+  if (!dataValida(data)) { erros.push("data"); marcarInvalido("hmcData"); }
+  if (!atendimento) { erros.push("nº de atendimento"); marcarInvalido("hmcAtendimento"); }
+
+  if (!procedimento) { erros.push("procedimento"); marcarInvalido("hmcProcedimento"); }
+  if (procedimento === "Outros") {
+    if (!procedimentoOutro) { erros.push("procedimento"); marcarInvalido("hmcProcedimentoOutro"); }
+    else procedimento = procedimentoOutro;
+  }
+
+  if (!chefe) { erros.push("chefe"); marcarInvalido("hmcChefe"); }
+  if (chefe === "Outro") {
+    if (!chefeOutro) { erros.push("chefe"); marcarInvalido("hmcChefeOutro"); }
+    else chefe = chefeOutro;
+  }
+
+  if (!apartamento) { erros.push("apartamento"); marcarInvalido("hmcApartamento"); }
+
+  if (erros.length) {
+    toast("Verifique: " + [...new Set(erros)].join(", ") + ".");
+    return null;
+  }
+
+  return {
+    hospital: "HMC",
+    nome_completo: nome,
+    data: data,
+    numero_atendimento: atendimento,
+    procedimento_realizado: procedimento,
+    chefe: chefe,
+    convenio: el("hmcConvenio").value.trim(),
+    apartamento: apartamento,
+  };
+}
 
 async function enviarRegistro(forcar) {
   const btn = el("btnSalvar");
@@ -260,7 +407,7 @@ async function enviarRegistro(forcar) {
 /* ---------- Modal de duplicata ---------- */
 function abrirModalDuplicata(msg) {
   el("modalDuplicataTexto").textContent = msg ||
-    "Já existe um registro com este paciente e esta data do procedimento. Deseja salvar mesmo assim?";
+    "Já existe um registro semelhante. Deseja salvar mesmo assim?";
   el("modalDuplicata").classList.remove("oculto");
 }
 el("btnDupCancelar").addEventListener("click", () => el("modalDuplicata").classList.add("oculto"));
@@ -273,8 +420,10 @@ el("btnDupConfirmar").addEventListener("click", () => {
    TELA 3 — Sucesso
    ========================================================================= */
 function mostrarSucesso(r) {
-  el("sucessoResumo").textContent =
-    r.nome_completo + " — " + r.procedimento_realizado + " (" + r.data_procedimento + ")";
+  const data = r.hospital === "HMC" ? r.data : r.data_procedimento;
+  let resumo = r.nome_completo + " — " + r.procedimento_realizado + " (" + data + ")";
+  if (r.hospital === "HMC") resumo += " — Atendimento " + r.numero_atendimento;
+  el("sucessoResumo").textContent = resumo;
   mostrarTela("sucesso");
 }
 el("btnNova").addEventListener("click", () => {

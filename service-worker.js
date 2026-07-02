@@ -4,7 +4,7 @@
    pacientes — apenas os arquivos estáticos do próprio aplicativo. As chamadas
    ao Apps Script (rede) nunca passam pelo cache. */
 
-const CACHE = "cirurgias-hsm-v1";
+const CACHE = "cirurgias-hsm-v2";
 const ARQUIVOS = [
   "./",
   "./index.html",

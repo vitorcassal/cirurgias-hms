@@ -56,6 +56,22 @@ body{
 .captura-illo{font-size:64px;margin-bottom:8px;}
 .captura-titulo{font-size:1.5rem;margin:.2em 0 .3em;}
 .captura-sub{color:var(--cinza-texto);font-size:1rem;line-height:1.5;margin:0 auto 28px;max-width:340px;}
+.hospital-seletor{
+  display:flex;gap:8px;max-width:360px;margin:0 auto 6px;
+  background:var(--verde-claro);border-radius:12px;padding:5px;
+}
+.hospital-opcao{
+  flex:1;padding:12px 10px;border:0;border-radius:9px;background:transparent;
+  color:var(--verde-escuro);font-weight:700;font-size:1rem;cursor:pointer;
+}
+.hospital-opcao.ativo{background:var(--verde);color:#fff;box-shadow:var(--sombra);}
+.hospital-dica{color:var(--cinza-texto);font-size:.85rem;margin:0 auto 22px;max-width:340px;}
+.hospital-badge{
+  display:inline-block;margin-left:8px;padding:2px 10px;border-radius:20px;
+  background:var(--verde-claro);color:var(--verde-escuro);font-size:.8rem;font-weight:700;
+  vertical-align:middle;
+}
+
 .botao-grande{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   background:var(--verde);color:#fff;font-size:1.2rem;font-weight:700;

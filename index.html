@@ -32,6 +32,12 @@
         <h1 class="captura-titulo">Registrar nova cirurgia</h1>
         <p class="captura-sub">Fotografe a etiqueta do paciente para a IA extrair os dados automaticamente.</p>
 
+        <div class="hospital-seletor" id="hospitalSeletor" role="group" aria-label="Escolha o hospital">
+          <button type="button" class="hospital-opcao" data-hospital="HMS">HMS</button>
+          <button type="button" class="hospital-opcao" data-hospital="HMC">HMC</button>
+        </div>
+        <p class="hospital-dica">As cirurgias serão gravadas na aba do hospital selecionado.</p>
+
         <label for="inputFoto" class="botao-grande">
           <span class="botao-grande-icone">&#128247;</span>
           Enviar foto da etiqueta
@@ -54,55 +60,128 @@
     <section id="tela-form" class="tela">
       <form id="formCirurgia" novalidate>
         <h2 class="form-titulo">Conferir e completar</h2>
-        <p class="form-sub">Revise os dados lidos da etiqueta e complete o procedimento.</p>
+        <p class="form-sub">
+          Revise os dados lidos da etiqueta e complete o procedimento.
+          <span id="hospitalBadge" class="hospital-badge">HMS</span>
+        </p>
 
         <div id="aviso-campos" class="aviso aviso-atencao oculto"></div>
 
-        <label class="campo">
-          <span class="campo-label">Nome completo <em>*</em></span>
-          <input type="text" id="nome" name="nome" autocomplete="off" required />
-        </label>
+        <!-- ===== Campos HMS ===== -->
+        <div id="campos-hms">
+          <label class="campo">
+            <span class="campo-label">Nome completo <em>*</em></span>
+            <input type="text" id="nome" name="nome" autocomplete="off" />
+          </label>
 
-        <label class="campo">
-          <span class="campo-label">Data de nascimento</span>
-          <input type="text" id="nascimento" name="nascimento" inputmode="numeric"
-                 placeholder="DD/MM/AAAA" maxlength="10" />
-        </label>
+          <label class="campo">
+            <span class="campo-label">Data de nascimento</span>
+            <input type="text" id="nascimento" name="nascimento" inputmode="numeric"
+                   placeholder="DD/MM/AAAA" maxlength="10" />
+          </label>
 
-        <label class="campo">
-          <span class="campo-label">Procedimento realizado <em>*</em></span>
-          <select id="procedimento" name="procedimento" required>
-            <option value="">Selecione…</option>
-            <option>Hernioplastia inguinal</option>
-            <option>Hernioplastia umbilical</option>
-            <option>Hernioplastia incisional</option>
-            <option>Hernioplastia epigástrica</option>
-            <option>Colecistectomia convencional</option>
-            <option value="Outra">Outra…</option>
-          </select>
-        </label>
+          <label class="campo">
+            <span class="campo-label">Procedimento realizado <em>*</em></span>
+            <select id="procedimento" name="procedimento">
+              <option value="">Selecione…</option>
+              <option>Hernioplastia inguinal</option>
+              <option>Hernioplastia umbilical</option>
+              <option>Hernioplastia incisional</option>
+              <option>Hernioplastia epigástrica</option>
+              <option>Colecistectomia convencional</option>
+              <option value="Outra">Outra…</option>
+            </select>
+          </label>
 
-        <label class="campo oculto" id="campo-procedimento-outro">
-          <span class="campo-label">Qual procedimento? <em>*</em></span>
-          <input type="text" id="procedimentoOutro" name="procedimentoOutro" autocomplete="off" />
-        </label>
+          <label class="campo oculto" id="campo-procedimento-outro">
+            <span class="campo-label">Qual procedimento? <em>*</em></span>
+            <input type="text" id="procedimentoOutro" name="procedimentoOutro" autocomplete="off" />
+          </label>
 
-        <label class="campo">
-          <span class="campo-label">Data do procedimento <em>*</em></span>
-          <input type="text" id="dataProcedimento" name="dataProcedimento" inputmode="numeric"
-                 placeholder="DD/MM/AAAA" maxlength="10" required />
-          <span class="campo-dica">Padrão: data de admissão lida na etiqueta. Edite se necessário.</span>
-        </label>
+          <label class="campo">
+            <span class="campo-label">Data do procedimento <em>*</em></span>
+            <input type="text" id="dataProcedimento" name="dataProcedimento" inputmode="numeric"
+                   placeholder="DD/MM/AAAA" maxlength="10" />
+            <span class="campo-dica">Padrão: data de admissão lida na etiqueta. Edite se necessário.</span>
+          </label>
 
-        <label class="campo">
-          <span class="campo-label">Intercorrências <small>(opcional)</small></span>
-          <textarea id="intercorrencias" name="intercorrencias" rows="3"
-                    placeholder="Descreva qualquer problema relacionado à cirurgia."></textarea>
-        </label>
+          <label class="campo">
+            <span class="campo-label">Intercorrências <small>(opcional)</small></span>
+            <textarea id="intercorrencias" name="intercorrencias" rows="3"
+                      placeholder="Descreva qualquer problema relacionado à cirurgia."></textarea>
+          </label>
 
-        <p id="prontuarioInfo" class="prontuario-info oculto">
-          Prontuário lido: <strong id="prontuarioValor">—</strong>
-        </p>
+          <p id="prontuarioInfo" class="prontuario-info oculto">
+            Prontuário lido: <strong id="prontuarioValor">—</strong>
+          </p>
+        </div>
+
+        <!-- ===== Campos HMC ===== -->
+        <div id="campos-hmc" class="oculto">
+          <label class="campo">
+            <span class="campo-label">Nome completo <em>*</em></span>
+            <input type="text" id="hmcNome" name="hmcNome" autocomplete="off" />
+          </label>
+
+          <label class="campo">
+            <span class="campo-label">Data <em>*</em></span>
+            <input type="text" id="hmcData" name="hmcData" inputmode="numeric"
+                   placeholder="DD/MM/AAAA" maxlength="10" />
+            <span class="campo-dica">Padrão: data lida na etiqueta. Edite se necessário.</span>
+          </label>
+
+          <label class="campo">
+            <span class="campo-label">Nº de atendimento <em>*</em></span>
+            <input type="text" id="hmcAtendimento" name="hmcAtendimento" inputmode="numeric" autocomplete="off" />
+            <span class="campo-dica">Usado também para evitar registros duplicados.</span>
+          </label>
+
+          <label class="campo">
+            <span class="campo-label">Procedimento realizado <em>*</em></span>
+            <select id="hmcProcedimento" name="hmcProcedimento">
+              <option value="">Selecione…</option>
+              <option>Hernioplastia umbilical</option>
+              <option>Hernioplastia inguinal VLP</option>
+              <option>Hernioplastia inguinal aberta</option>
+              <option>CVLP</option>
+              <option value="Outros">Outros…</option>
+            </select>
+          </label>
+
+          <label class="campo oculto" id="campo-hmc-procedimento-outro">
+            <span class="campo-label">Qual procedimento? <em>*</em></span>
+            <input type="text" id="hmcProcedimentoOutro" name="hmcProcedimentoOutro" autocomplete="off" />
+          </label>
+
+          <label class="campo">
+            <span class="campo-label">Chefe <em>*</em></span>
+            <select id="hmcChefe" name="hmcChefe">
+              <option value="">Selecione…</option>
+              <option>Dr Luiz Von Bahten</option>
+              <option>Dra Alice</option>
+              <option value="Outro">Outro…</option>
+            </select>
+          </label>
+
+          <label class="campo oculto" id="campo-hmc-chefe-outro">
+            <span class="campo-label">Qual chefe? <em>*</em></span>
+            <input type="text" id="hmcChefeOutro" name="hmcChefeOutro" autocomplete="off" />
+          </label>
+
+          <label class="campo">
+            <span class="campo-label">Convênio <small>(opcional)</small></span>
+            <input type="text" id="hmcConvenio" name="hmcConvenio" autocomplete="off" />
+          </label>
+
+          <label class="campo">
+            <span class="campo-label">Apartamento <em>*</em></span>
+            <select id="hmcApartamento" name="hmcApartamento">
+              <option value="">Selecione…</option>
+              <option value="Sim">Sim</option>
+              <option value="Não">Não</option>
+            </select>
+          </label>
+        </div>
 
         <div class="form-acoes">
           <button type="button" id="btnVoltar" class="botao-secundario">Voltar</button>
