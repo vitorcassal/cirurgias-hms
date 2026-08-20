@@ -10,7 +10,7 @@
    - Ícones e manifest (raramente mudam): usa o que está guardado primeiro,
      mais rápido, e busca na rede só se não tiver nada guardado ainda. */
 
-const CACHE = "cirurgias-hsm-v5";
+const CACHE = "cirurgias-hsm-v6";
 const ARQUIVOS = [
   "./",
   "./index.html",
