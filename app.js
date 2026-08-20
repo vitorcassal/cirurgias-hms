@@ -281,7 +281,7 @@ el("procedimento").addEventListener("change", (e) => {
   }
 
   const campoValor = el("valorProcedimento");
-  if (!campoValor.value.trim() && VALORES_PADRAO_HMS[e.target.value]) {
+  if (VALORES_PADRAO_HMS[e.target.value]) {
     campoValor.value = VALORES_PADRAO_HMS[e.target.value];
   }
 });
@@ -350,12 +350,18 @@ function coletarHMS() {
     return null;
   }
 
+  // Preenche automaticamente o valor padrão do procedimento se não foi digitado
+  let valorFinal = valor;
+  if (!valorFinal && VALORES_PADRAO_HMS[procedimento]) {
+    valorFinal = VALORES_PADRAO_HMS[procedimento];
+  }
+
   return {
     hospital: "HMS",
     nome_completo: nome,
     data_nascimento: nascimento,
     procedimento_realizado: procedimento,
-    valor: valor,
+    valor: valorFinal,
     data_procedimento: dataProc,
     intercorrencias: el("intercorrencias").value.trim(),
   };

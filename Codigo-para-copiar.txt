@@ -55,6 +55,15 @@ var ORDEM_PROCEDIMENTOS_HMS = [
   "Outros"
 ];
 
+// Valores padrão dos procedimentos do HMS (tabela de honorários)
+var VALORES_PADRAO_HMS = {
+  "Hernioplastia inguinal":    "220,00",
+  "Hernioplastia umbilical":   "220,00",
+  "Hernioplastia incisional":  "220,00",
+  "Hernioplastia epigástrica": "220,00",
+  "Colecistectomia convencional": "450,00"
+};
+
 var CABECALHOS_AMBU = [             // colunas da aba do ambulatório (ordem já existente na planilha)
   "Número de Pacientes",
   "Data"
@@ -244,13 +253,21 @@ function _salvarHMS(req) {
     };
   }
 
+  var valor = _str(req.valor);
+  if (!valor) {
+    var cat = _categoriaProcedimentoHMS(proc);
+    if (VALORES_PADRAO_HMS[cat]) {
+      valor = VALORES_PADRAO_HMS[cat];
+    }
+  }
+
   _gravarLinha(aba, [
     nome,
     _str(req.data_nascimento),
     proc,
     dProc,
     _str(req.intercorrencias),
-    _formatarValor(req.valor)
+    _formatarValor(valor)
   ]);
 
   return { ok: true };
